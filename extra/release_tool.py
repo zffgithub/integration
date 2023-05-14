@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import shutil
 import subprocess
 import sys
 import traceback
-import logging
 import datetime
 
 try:
@@ -49,12 +48,17 @@ GITLAB_CREDS_MISSING_ERR = """GitLab credentials not found. Possible locations:
 - 'pass' password management storage, under "token" label."""
 
 # What we use in commits messages when bumping versions.
-VERSION_BUMP_STRING = "Bump versions for Mender"
+VERSION_BUMP_STRING = "chore: Bump versions for Mender"
 
 # Whether or not pushes should really happen.
 PUSH = True
 # Whether this is a dry-run.
 DRY_RUN = False
+
+CONVENTIONAL_COMMIT_REGEX = (
+    r"^(?P<type>build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)"
+    r"(?:\(\w+\))?:.*"
+)
 
 
 class NotAVersionException(Exception):
@@ -251,6 +255,8 @@ BACKEND_SERVICES_ENT = {
     "auditlogs",
     "mtls-ambassador",
     "devicemonitor",
+    "mender-conductor-enterprise",
+    "generate-delta-worker",
 }
 BACKEND_SERVICES_OPEN_ENT = {
     "deployments",
@@ -960,7 +966,7 @@ def query_execute_git_list(execute_git_list):
     return True
 
 
-def query_execute_list(execute_list):
+def query_execute_list(execute_list, env=None):
     """Executes the list of commands after asking first. The argument is a list of
     lists, where the inner list is the argument to subprocess.check_call.
 
@@ -983,7 +989,7 @@ def query_execute_list(execute_list):
             print("Would have executed: %s" % " ".join(cmd))
             continue
 
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, env=env)
 
     return True
 
@@ -1237,7 +1243,7 @@ def annotation_version(repo, tag_avail):
 
 
 def version_components(version):
-    """Returns a four-tuple containing the version componets major, minor, patch
+    """Returns a four-tuple containing the version components major, minor, patch
     and beta, as ints. Beta does not include the "b"."""
 
     match = re.match(r"^([0-9]+)\.([0-9]+)\.([0-9]+)(?:b([0-9]+))?", version)
@@ -1727,6 +1733,7 @@ DR = Disable automatic publishing of the release
                     if reply[1] == "T":
                         set_param("BUILD_MENDER_DIST_PACKAGES", action)
                         set_param("BUILD_MENDER_CONVERT", action)
+                set_param("RUN_BACKEND_INTEGRATION_TESTS", action)
                 set_param("RUN_INTEGRATION_TESTS", action)
 
             if reply[1] == "T" or reply[1] == "C":
@@ -1757,6 +1764,7 @@ DR = Disable automatic publishing of the release
                 set_param("BUILD_SERVERS", action)
                 set_param("BUILD_MENDER_DIST_PACKAGES", action)
                 set_param("BUILD_MENDER_CONVERT", action)
+                set_param("BUILD_BEAGLEBONEBLACK", action)
             else:
                 action = "false"
             set_param("PUBLISH_RELEASE_AUTOMATIC", action)
@@ -1860,12 +1868,26 @@ def do_license_generation(state, tag_avail):
                             "docker",
                             "build",
                             "-t",
+                            "mendersoftware/gui:base",
+                            "-f",
+                            os.path.join(tmpdir, "Dockerfile"),
+                            "--target",
+                            "base",
+                            tmpdir,
+                        ],
+                        [
+                            "docker",
+                            "build",
+                            "-t",
                             gui_tag,
                             "-f",
-                            os.path.join(tmpdir, "Dockerfile.disclaimer"),
+                            os.path.join(tmpdir, "Dockerfile"),
+                            "--target",
+                            "disclaim",
                             tmpdir,
-                        ]
-                    ]
+                        ],
+                    ],
+                    env={"DOCKER_BUILDKIT": "1"},
                 )
                 break
 
@@ -1874,21 +1896,15 @@ def do_license_generation(state, tag_avail):
                 [
                     "docker",
                     "run",
-                    "-d",
-                    "--name",
-                    "release_tool_gui_licenses",
-                    gui_tag,
+                    "--rm",
+                    "--entrypoint",
                     "/bin/sh",
+                    "-v",
+                    os.getcwd() + ":/extract",
+                    gui_tag,
                     "-c",
-                    "while true; do sleep 1; done",
+                    "mv disclaimer.txt /extract/gui-licenses.txt",
                 ],
-                [
-                    "docker",
-                    "cp",
-                    "release_tool_gui_licenses:/usr/src/app/disclaimer.txt",
-                    "gui-licenses.txt",
-                ],
-                ["docker", "rm", "-f", "release_tool_gui_licenses"],
             ]
         )
         if not executed:
@@ -2293,7 +2309,7 @@ def do_docker_compose_branches_from_follows(state):
         cmd = [
             "commit",
             "-asm",
-            """Update branch references for %s.
+            """chore: Update branch references for %s.
 
 Changelog: None"""
             % bare_branch,
@@ -2407,6 +2423,40 @@ def do_build(args):
     trigger_build(state, tag_avail)
 
 
+def determine_version_bump(state, repo, from_v, to_v):
+    revlist = execute_git(
+        state, repo.git(), ["rev-list", "%s..%s" % (from_v, to_v)], capture=True
+    ).split("\n")
+
+    (major, minor, patch, _) = version_components(from_v)
+    version_mask = [False, False, False]
+
+    for sha in revlist:
+        commit_message = execute_git(
+            state, repo.git(), ["log", "--format=%B", "-1", sha], capture=True
+        )
+        m = re.search(r"^BREAKING CHANGE:.+", commit_message, re.MULTILINE)
+        if m:
+            version_mask[0] = True
+            break
+        m = re.match(CONVENTIONAL_COMMIT_REGEX, commit_message)
+        if m:
+            groups = m.groupdict()
+            if groups["type"] == "feat":
+                version_mask[1] = True
+            elif groups["type"] == "fix":
+                version_mask[2] = True
+
+    if version_mask[0]:
+        return "%d.0.0" % (major + 1)
+    elif version_mask[1]:
+        return "%d.%d.0" % (major, minor + 1)
+    elif version_mask[2]:
+        return "%d.%d.%d" % (major, minor, patch + 1)
+    else:
+        return None
+
+
 def determine_version_to_include_in_release(state, repo):
     """Returns True if the user decided on the component, False if the user
     skips the decision for later"""
@@ -2449,10 +2499,12 @@ def determine_version_to_include_in_release(state, repo):
         version_list = sorted_final_version_list(
             os.path.join(state["repo_dir"], repo.git())
         )
+        follow_branch = "%s/master" % find_upstream_remote(state, repo.git())
         if len(version_list) > 0:
             prev_of_repo = version_list[0]
-            (major, minor, _, _) = version_components(prev_of_repo)
-            new_repo_version = "%d.%d.0" % (major, minor + 1)
+            new_repo_version = determine_version_bump(
+                state, repo, prev_of_repo, follow_branch
+            )
         else:
             # No previous version at all. Start at 1.0.0.
             prev_of_repo = None
@@ -2460,7 +2512,6 @@ def determine_version_to_include_in_release(state, repo):
         prev_of_repo_independent = prev_of_repo
         if overall_beta:
             new_repo_version += "b%d" % overall_beta
-        follow_branch = "%s/master" % find_upstream_remote(state, repo.git())
 
     if prev_of_repo:
         print_line()
@@ -2510,7 +2561,7 @@ double check this.
             print_line()
             return False
 
-    if not prev_of_repo or reply.lower().startswith("y"):
+    if not prev_of_repo or reply.lower().startswith("y") and new_repo_version:
         reply = ask(
             "Should the new release of %s be version %s? "
             % (repo.git(), new_repo_version)
@@ -2732,7 +2783,9 @@ def do_release(release_state_file):
         print("  B) Trigger new integration build using current tags")
         print("  L) Generate license text for all dependencies")
         print("  F) Tag and push final tag, based on current build tag")
-        print("  N) Generate release notes from final tags")
+        print(
+            "  N) Generate release notes from current tag, either final tag or current build tag"
+        )
         print(
             '  D) Update ":%s" and/or ":latest" Docker tags to current release'
             % minor_version
@@ -2798,7 +2851,11 @@ def do_release(release_state_file):
         elif reply.lower() == "l":
             do_license_generation(state, tag_avail)
         elif reply.lower() == "n":
-            do_generate_release_notes(state["repo_dir"], state["version"])
+            # Generate release notes from tag_avail, which will either hold the final tag
+            # or the current build tag
+            do_generate_release_notes(
+                state["repo_dir"], tag_avail["integration"]["build_tag"]
+            )
         elif reply.lower() == "u":
             purge_build_tags(state, tag_avail)
         elif reply.lower() == "m":
@@ -2839,6 +2896,11 @@ def do_set_version_to(args):
             set_component_version_to(integration_dir(), assoc, args.version)
             # Update extra files used in integration tests
             set_component_version_to(
+                os.path.join(integration_dir(), "backend-tests", "docker"),
+                assoc,
+                args.version,
+            )
+            set_component_version_to(
                 os.path.join(integration_dir(), "extra", "mtls"), assoc, args.version,
             )
             set_component_version_to(
@@ -2860,6 +2922,11 @@ def do_set_version_to(args):
         component = Component.get_component_of_type("docker_image", args.set_version_of)
         set_component_version_to(integration_dir(), component, args.version)
         # Update extra files used in integration tests
+        set_component_version_to(
+            os.path.join(integration_dir(), "backend-tests", "docker"),
+            component,
+            args.version,
+        )
         set_component_version_to(
             os.path.join(integration_dir(), "extra", "mtls"), component, args.version,
         )

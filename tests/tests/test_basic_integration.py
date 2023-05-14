@@ -125,12 +125,13 @@ class BaseTestBasicIntegration(MenderTesting):
         )
 
     def do_test_update_no_compression(self, env, valid_image_with_mender_conf):
-        """Uploads an uncompressed artifact, and runs the whole udpate process."""
+        """Uploads an uncompressed artifact, and runs the whole update process."""
         devauth = DeviceAuthV2(env.auth)
         deploy = Deployments(env.auth, devauth)
 
         mender_device = env.device
         mender_conf = mender_device.run("cat /etc/mender/mender.conf")
+
         update_image(
             env.device,
             env.get_virtual_network_host_ip(),
@@ -341,10 +342,10 @@ class TestBasicIntegrationOpenSource(BaseTestBasicIntegration):
         )
 
     def test_update_no_compression(
-        self, standard_setup_one_client_bootstrapped, valid_image_with_mender_conf
+        self, standard_setup_one_client_bootstrapped, valid_image_with_mender_conf,
     ):
         self.do_test_update_no_compression(
-            standard_setup_one_client_bootstrapped, valid_image_with_mender_conf
+            standard_setup_one_client_bootstrapped, valid_image_with_mender_conf,
         )
 
     def test_forced_update_check_from_client(
@@ -366,10 +367,12 @@ class TestBasicIntegrationOpenSource(BaseTestBasicIntegration):
 class TestBasicIntegrationEnterprise(BaseTestBasicIntegration):
     @MenderTesting.fast
     def test_double_update_rofs(
-        self, enterprise_one_rofs_client_bootstrapped, valid_image_rofs_with_mender_conf
+        self,
+        enterprise_one_rofs_client_bootstrapped,
+        valid_image_rofs_with_mender_conf,
     ):
         self.do_test_double_update_rofs(
-            enterprise_one_rofs_client_bootstrapped, valid_image_rofs_with_mender_conf
+            enterprise_one_rofs_client_bootstrapped, valid_image_rofs_with_mender_conf,
         )
 
     @MenderTesting.fast
@@ -389,10 +392,10 @@ class TestBasicIntegrationEnterprise(BaseTestBasicIntegration):
         )
 
     def test_update_no_compression(
-        self, enterprise_one_client_bootstrapped, valid_image_with_mender_conf
+        self, enterprise_one_client_bootstrapped, valid_image_with_mender_conf,
     ):
         self.do_test_update_no_compression(
-            enterprise_one_client_bootstrapped, valid_image_with_mender_conf
+            enterprise_one_client_bootstrapped, valid_image_with_mender_conf,
         )
 
     def test_forced_update_check_from_client(

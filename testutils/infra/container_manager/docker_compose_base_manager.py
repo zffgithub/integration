@@ -1,4 +1,4 @@
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -46,11 +46,13 @@ class DockerComposeBaseNamespace(DockerNamespace):
         self._debug_log_containers_logs()
         self._stop_docker_compose()
 
-    def get_mender_clients(self, network="mender"):
+    def get_mender_clients(self, network="mender", client_service_name="mender-client"):
         """Returns IP address(es) of mender-client container(s)"""
         clients = [
             ip + ":8822"
-            for ip in self.get_ip_of_service("mender-client", network=network)
+            for ip in self.get_ip_of_service(
+                service=client_service_name, network=network
+            )
         ]
         return clients
 
@@ -127,14 +129,14 @@ class DockerComposeBaseNamespace(DockerNamespace):
         else:
             assert (
                 False
-            ), "expected one instance of api-gateway running, but found: {} instance(s)".format(
-                len(gateway)
+            ), "expected one instance of api-gateway running, but found: {} instance(s) for project {}".format(
+                len(gateway), self.name
             )
 
     def restart_service(self, service):
         """Restarts a service."""
-        self._docker_compose_cmd("scale %s=0" % service)
-        self._docker_compose_cmd("scale %s=1" % service)
+        self._docker_compose_cmd(f"up -d --scale {service}=0 {service}")
+        self._docker_compose_cmd(f"up -d --scale {service}=1 {service}")
 
     def get_file(self, container_name, path):
         container_id = super().getid([container_name])
@@ -145,7 +147,7 @@ class DockerComposeBaseNamespace(DockerNamespace):
         for line in logs.split("\n"):
             logger.debug(self._re_newlines_sub("", line))
 
-    def _docker_compose_cmd(self, arg_list, env=None):
+    def _docker_compose_cmd(self, arg_list, env=None, fail_early=True):
         """Run docker-compose command using self.docker_compose_files
 
         It will retry a few times due to https://github.com/opencontainers/runc/issues/1326
@@ -165,13 +167,14 @@ class DockerComposeBaseNamespace(DockerNamespace):
                 try:
                     return subprocess.check_output(
                         cmd, stderr=subprocess.STDOUT, shell=True, env=penv
-                    ).decode("utf-8")
+                    ).decode("utf-8", "ignore")
 
                 except subprocess.CalledProcessError as e:
                     logger.info(
                         'failed to run "%s": error follows:\n%s' % (cmd, e.output)
                     )
-                    self._stop_docker_compose()
+                    if fail_early:
+                        self._stop_docker_compose()
 
             if count < 5:
                 logger.info("sleeping %d seconds and retrying" % (count * 30))
@@ -181,13 +184,21 @@ class DockerComposeBaseNamespace(DockerNamespace):
 
     def _stop_docker_compose(self):
         with docker_lock:
+            stop_sleep_seconds = 15
+            retry_attempts = 8
+
             # Take down all docker instances in this namespace.
-            cmd = "docker ps -aq -f name=%s | xargs -r docker rm -fv" % self.name
-            logger.info("running %s" % cmd)
-            subprocess.check_call(cmd, shell=True)
-            cmd = (
-                "docker network list -q -f name=%s | xargs -r docker network rm"
-                % self.name
-            )
-            logger.info("running %s" % cmd)
-            subprocess.check_call(cmd, shell=True)
+            while retry_attempts > 0:
+                logger.info(
+                    "(attempts left: %d) trying to stop all containers in %s"
+                    % (retry_attempts, self.name)
+                )
+                try:
+                    self._docker_compose_cmd(
+                        "down -v --remove-orphans", fail_early=False
+                    )
+                    break
+                except Exception as e:
+                    time.sleep(stop_sleep_seconds)
+                    logger.error(e)
+                    retry_attempts = retry_attempts - 1

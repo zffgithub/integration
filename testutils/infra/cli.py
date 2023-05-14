@@ -1,4 +1,4 @@
-# Copyright 2021 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -12,7 +12,12 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import os
+import pytest
+import tempfile
+
 from collections import namedtuple
+from contextlib import contextmanager
 from typing import List
 
 from testutils.infra.container_manager.docker_manager import DockerNamespace
@@ -71,7 +76,7 @@ class CliUseradm(BaseCli):
             [open_source, enterprise], self.service_name
         )
 
-    def create_user(self, username, password, tenant_id=""):
+    def create_user(self, username, password, tenant_id="", roles=[]):
         cmd = [
             self.service.bin_path,
             "create-user",
@@ -83,6 +88,9 @@ class CliUseradm(BaseCli):
 
         if tenant_id != "":
             cmd += ["--tenant-id", tenant_id]
+
+        if len(roles) > 0:
+            cmd += ["--roles", ",".join(roles)]
 
         uid = self.container_manager.execute(self.cid, cmd)
         return uid
@@ -104,10 +112,14 @@ class CliTenantadm(BaseCli):
         BaseCli.__init__(
             self, "mender-tenantadm", containers_namespace, container_manager
         )
+        self.service_name = "mender-tenantadm"
 
-    def create_org(self, name, username, password, plan="os"):
+        enterprise = Microservice("/usr/bin/tenantadm", "/etc/tenantadm")
+        self.choose_binary_and_config_paths([enterprise], self.service_name)
+
+    def create_org(self, name, username, password, plan="os", addons=[]) -> str:
         cmd = [
-            "/usr/bin/tenantadm",
+            self.service.bin_path,
             "create-org",
             "--name",
             name,
@@ -118,12 +130,14 @@ class CliTenantadm(BaseCli):
             "--plan",
             plan,
         ]
+        for addon in addons:
+            cmd.extend(["--addon", addon])
 
         tid = self.container_manager.execute(self.cid, cmd)
         return tid
 
-    def get_tenant(self, tid):
-        cmd = ["/usr/bin/tenantadm", "get-tenant", "--id", tid]
+    def get_tenant(self, tid: str):
+        cmd = [self.service.bin_path, "get-tenant", "--id", tid]
 
         tenant = self.container_manager.execute(self.cid, cmd)
         return tenant
@@ -132,7 +146,7 @@ class CliTenantadm(BaseCli):
         if isK8S():
             return
 
-        cmd = ["usr/bin/tenantadm", "migrate"]
+        cmd = [self.service.bin_path, "migrate"]
 
         self.container_manager.execute(self.cid, cmd)
 
@@ -165,26 +179,48 @@ class CliDeviceauth(BaseCli):
 
         self.container_manager.execute(self.cid, cmd)
 
+    @contextmanager
     def add_default_tenant_token(self, tenant_token):
         """
         Stops the container, adds the default_tenant_token to the config file
         at '/etc/deviceauth/config.yaml, and starts the container back up.
+        NOTE: Changing the runtime state of a container is prone to errors.
+              The caller should ALWAYS wait for the deviceauth container to
+              become healthy after entering AND leaving the context.
 
         :param tenant_token - 'the default tenant token to set'
         """
 
-        # Append the default_tenant_token in the config ('/etc/deviceauth/config.yaml' or '/etc/deviceauth-enterprise/config.yaml')
-        cmd = [
-            "/bin/sed",
-            "-i",
-            "$adefault_tenant_token: {}".format(tenant_token),
-            f"{self.service.data_path}/config.yaml",
-        ]
-        self.container_manager.execute(self.cid, cmd)
+        # Append the default_tenant_token in the config
+        # ('/etc/deviceauth/config.yaml' or '/etc/deviceauth-enterprise/config.yaml')
+        config_file = f"{self.service.data_path}/config.yaml"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_config = os.path.join(tmp, "config.tmp.yaml")
+            container_config = os.path.join(tmp, "config.yaml")
+            self.container_manager.download(self.cid, config_file, container_config)
+            tmp_config_content = open(container_config).read().strip()
+            tmp_config_content += "\ndefault_tenant_token: {}\n".format(tenant_token)
+            open(tmp_config, "w").write(tmp_config_content)
+            self.container_manager.upload(self.cid, tmp_config, config_file)
+            # Restart the container, so that it is picked up by the device-auth service on startup
+            self.container_manager.cmd(self.cid, "stop")
+            self.container_manager.cmd(self.cid, "start")
+            try:
+                yield
+            finally:
+                try:
+                    # Restore the previous configuration state
+                    self.container_manager.upload(
+                        self.cid, container_config, config_file
+                    )
+                    self.container_manager.cmd(self.cid, "stop")
+                    self.container_manager.cmd(self.cid, "start")
+                except Exception as exc:
+                    pytest.exit(f"Failed to restore deviceauth container state: {exc}")
 
-        # Restart the container, so that it is picked up by the device-auth service on startup
-        self.container_manager.cmd(self.cid, "stop")
-        self.container_manager.cmd(self.cid, "start")
+                # Clear temp directory
+                os.unlink(tmp_config)
+                os.unlink(container_config)
 
     def propagate_inventory_statuses(self, tenant_id=None):
         if isK8S():

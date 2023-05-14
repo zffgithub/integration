@@ -1,4 +1,4 @@
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -21,10 +21,13 @@ import uuid
 import os
 import subprocess
 from contextlib import contextmanager
+from typing import List
 
 import docker
 import redo
 import requests
+
+from redo import retrier
 
 import testutils.api.deviceauth as deviceauth
 import testutils.api.inventory as inventory
@@ -48,15 +51,15 @@ def mongo():
 def clean_mongo(mongo):
     """Fixture setting up a clean (i.e. empty database). Yields
     pymongo.MongoClient connected to the DB."""
-    elasticsearch_cleanup()
+    opensearch_cleanup()
     mongo_cleanup(mongo)
     yield mongo.client
 
 
-def elasticsearch_cleanup():
+def opensearch_cleanup():
     try:
         requests.post(
-            reporting.ELASTICSEARCH_DELETE_URL, json={"query": {"match_all": {}}}
+            reporting.OPENSEARCH_DELETE_URL, json={"query": {"match_all": {}}}
         )
     except requests.RequestException:
         pass
@@ -67,11 +70,12 @@ def mongo_cleanup(mongo):
 
 
 class User:
-    def __init__(self, id, name, pwd):
+    def __init__(self, id, name, pwd, roles=[]):
         self.name = name
         self.pwd = pwd
         self.id = id
         self.token = None
+        self.roles = roles
 
 
 class Authset:
@@ -142,10 +146,14 @@ def create_authset(
 
 
 def create_user(
-    name: str, pwd: str, tid: str = "", containers_namespace: str = "backend-tests"
+    name: str,
+    pwd: str,
+    tid: str = "",
+    containers_namespace: str = "backend-tests",
+    roles: list = [],
 ) -> User:
     cli = CliUseradm(containers_namespace)
-    uid = cli.create_user(name, pwd, tid)
+    uid = cli.create_user(name, pwd, tid, roles=roles)
 
     return User(uid, name, pwd)
 
@@ -155,6 +163,7 @@ def create_org(
     username: str,
     password: str,
     plan: str = "os",
+    addons: List[str] = [],
     containers_namespace: str = "backend-tests",
     container_manager=None,
 ) -> Tenant:
@@ -162,7 +171,7 @@ def create_org(
         containers_namespace=containers_namespace, container_manager=container_manager
     )
     user_id = None
-    tenant_id = cli.create_org(name, username, password, plan=plan)
+    tenant_id = cli.create_org(name, username, password, plan=plan, addons=addons)
     tenant_token = json.loads(cli.get_tenant(tenant_id))["tenant_token"]
 
     host = GATEWAY_HOSTNAME
@@ -170,18 +179,17 @@ def create_org(
         host = container_manager.get_mender_gateway()
     api = ApiClient(useradm.URL_MGMT, host=host)
 
-    # Try log in every second for 3 minutes.
+    # Try log in every second for 2 minutes.
     # - There usually is a slight delay (in order of ms) for propagating
     #   the created user to the db.
-    for i in range(3 * 60):
+    for _ in retrier(attempts=120, sleepscale=1, sleeptime=1):
         rsp = api.call("POST", useradm.URL_LOGIN, auth=(username, password))
         if rsp.status_code == 200:
             break
-        time.sleep(1)
 
     assert (
         rsp.status_code == 200
-    ), "User could not log in within three minutes after organization has been created."
+    ), "User could not log in within two minutes after organization has been created."
 
     user_token = rsp.text
     rsp = api.with_auth(user_token).call("GET", useradm.URL_USERS)
@@ -272,7 +280,7 @@ def make_accepted_device(
     test_type: str = "regular",
 ) -> Device:
     """Create one device with "accepted" status."""
-    test_types = ["regular", "azure"]
+    test_types = ["regular", "azure", "aws"]
     if test_type not in test_types:
         raise RuntimeError("Given test type is not allowed")
     dev = make_pending_device(dauthd1, dauthm, utoken, tenant_token=tenant_token)
@@ -548,3 +556,49 @@ def create_user_test_setup() -> User:
 
 def useExistingTenant() -> bool:
     return bool(os.environ.get("USE_EXISTING_TENANT"))
+
+
+def setup_tenant_devices(tenant, device_groups):
+    """
+    setup_user_devices authenticates the user and creates devices
+    attached to (static) groups given by the proportion map from
+    the groups parameter.
+    :param users:     Users to setup devices for (list).
+    :param n_devices: Number of accepted devices created for each
+                      user (int).
+    :param groups:    Map of group names to device proportions, the
+                      sum of proportion must be less than or equal
+                      to 1 (dict[str] = float)
+    :return: Dict mapping group_name -> list(devices)
+    """
+    devauth_DEV = ApiClient(deviceauth.URL_DEVICES)
+    devauth_MGMT = ApiClient(deviceauth.URL_MGMT)
+    invtry_MGMT = ApiClient(inventory.URL_MGMT)
+    user = tenant.users[0]
+    grouped_devices = {}
+    group = None
+
+    tenant.devices = []
+    for group, dev_cnt in device_groups.items():
+        grouped_devices[group] = []
+        for i in range(dev_cnt):
+            device = make_accepted_device(
+                devauth_DEV, devauth_MGMT, user.token, tenant.tenant_token
+            )
+            if group is not None:
+                rsp = invtry_MGMT.with_auth(user.token).call(
+                    "PUT",
+                    inventory.URL_DEVICE_GROUP.format(id=device.id),
+                    body={"group": group},
+                )
+                assert rsp.status_code == 204
+
+            device.group = group
+            grouped_devices[group].append(device)
+            tenant.devices.append(device)
+
+    # sleep a few seconds waiting for the data propagation to the reporting service
+    # and the Elasticsearch indexing to complete
+    time.sleep(reporting.REPORTING_DATA_PROPAGATION_SLEEP_TIME_SECS)
+
+    return grouped_devices

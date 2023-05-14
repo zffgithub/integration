@@ -1,4 +1,4 @@
-version: '2.1'
+version: '2.3'
 services:
 
     mender-api-gateway:
@@ -16,4 +16,4 @@ services:
 
     mender-deployments:
         environment:
-            DEPLOYMENTS_AWS_URI: http://s3.docker.mender.io
+            DEPLOYMENTS_AWS_EXTERNAL_URI: http://s3.docker.mender.io

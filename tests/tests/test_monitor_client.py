@@ -1,4 +1,4 @@
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 #    limitations under the License.
 #
 
+import datetime
 import json
 import os
 import os.path
@@ -68,6 +69,7 @@ message_mail_options_prefix = "mail options:"
 # tests constants
 mailbox_path = "/var/spool/mail/local"
 wait_for_alert_interval_s = 8 if not isK8S() else 32
+alert_expiration_time_seconds = 32 if not isK8S() else 64
 expected_from = (
     "no-reply@hosted.mender.io"
     if not isK8S()
@@ -105,19 +107,37 @@ def get_and_parse_email(env, address):
         # concat and create header object for each
         headers = []
         message_string = ""
+        device_date = None
         for line in mail.splitlines():
             if line.startswith(message_mail_options_prefix):
                 continue
             if message_start == line:
                 message_string = ""
+                device_date = None
                 continue
             if message_end == line:
-                headers.append(Parser(policy=default).parsestr(message_string))
+                if device_date is not None:
+                    logger.debug(f"using device_date {device_date}")
+                    message_string = (
+                        device_date.strftime("Date: %a, %m %b %Y %H:%M:%S +0200")
+                        + "\n"
+                        + message_string
+                    )
+                    logger.debug("msg:%s" % message_string)
+                h = Parser(policy=default).parsestr(message_string)
+                headers.append(h)
                 continue
             # extra safety, we are supposed to only eval b'string' lines
             if not line.startswith("b'"):
                 continue
-            message_string = message_string + eval(line).decode("utf-8") + "\n"
+            line_string = eval(line).decode("utf-8")
+            message_string = message_string + line_string + "\n"
+            # get the date from b'Time on device: Thu, 01 Dec 2022 14:01:01 UTC' line
+            if line_string.startswith("Time on device: "):
+                device_date = datetime.datetime.strptime(
+                    line_string, "Time on device: %a, %d %b %Y %H:%M:%S %Z"
+                )
+                logger.debug(f"parsed device_date {device_date}")
 
     # log all messages for debug
     for m in headers:
@@ -257,6 +277,19 @@ def prepare_dbus_monitoring(
         shutil.rmtree(tmpdir)
 
 
+def prepare_dockerevents_monitoring(
+    mender_device, container_name, alert_expiration="", action="restart"
+):
+    mender_device.run(
+        "mender-monitorctl create dockerevents container_%s_%s %s %s %s"
+        % (container_name, action, container_name, action, alert_expiration)
+    )
+    mender_device.run(
+        "mender-monitorctl enable dockerevents container_%s_%s"
+        % (container_name, action)
+    )
+
+
 class TestMonitorClientEnterprise:
     """Tests for the Monitor client"""
 
@@ -266,7 +299,7 @@ class TestMonitorClientEnterprise:
 
         uuidv4 = str(uuid.uuid4())
         name = "test.mender.io-" + uuidv4
-        tid = cli.create_org(name, u.name, u.pwd, plan="enterprise")
+        tid = cli.create_org(name, u.name, u.pwd, plan="enterprise", addons=["monitor"])
 
         # at the moment we do not have a notion of a monitor add-on in the
         # backend, but this will be needed here, see MEN-4809
@@ -447,7 +480,7 @@ class TestMonitorClientEnterprise:
             update_check_file_only=True,
         )
         time.sleep(2 * wait_for_alert_interval_s)
-        _, messages = get_and_parse_email_n(
+        mail, messages = get_and_parse_email_n(
             monitor_commercial_setup_no_client, user_name, messages_count + 1
         )
         messages_count = len(messages)
@@ -456,6 +489,10 @@ class TestMonitorClientEnterprise:
             user_name,
             "OK: Monitor Alert for Log file contains " + log_pattern + " on " + devid,
         )
+        # in each CRITICAL and OK email we expect the pattern to be present at least 3 times
+        assert mail.count(log_pattern) >= 6
+        # in each CRITICAL and OK email we expect the log path to be present at least 1 time
+        assert mail.count(log_pattern) >= 2
         logger.info(
             "test_monitorclient_alert_email: got OK alert email after log pattern expiration."
         )
@@ -506,15 +543,16 @@ class TestMonitorClientEnterprise:
         logger.info(
             "test_monitorclient_alert_email: email alert a pattern found in the journalctl output scenario."
         )
-        service_name = "mender-client"
+        service_name = "crond"
         prepare_log_monitoring(
             mender_device,
             service_name,
             "@journalctl -f -u " + service_name,
-            "State transition: .*",
+            ": Started .*",
         )
+        mender_device.run("echo -ne > /tmp/mylog.log")
         mender_device.run("systemctl restart mender-monitor")
-        time.sleep(2 * wait_for_alert_interval_s)
+        time.sleep(wait_for_alert_interval_s)
         mail, messages = get_and_parse_email_n(
             monitor_commercial_setup_no_client, user_name, messages_count + 1
         )
@@ -522,7 +560,7 @@ class TestMonitorClientEnterprise:
         assert_valid_alert(
             messages[-1],
             user_name,
-            "CRITICAL: Monitor Alert for Log file contains State transition:",
+            "CRITICAL: Monitor Alert for Log file contains : Started",
         )
         assert "${workflow.input" not in mail
 
@@ -559,6 +597,84 @@ class TestMonitorClientEnterprise:
         logger.info(
             "test_monitorclient_alert_email: got OK alert email after log pattern expiration in case of streaming log file."
         )
+
+    def test_monitorclient_alert_email_with_group(
+        self, monitor_commercial_setup_no_client
+    ):
+        """Tests the monitor client email alerting with device in a static group"""
+        service_name = "crond"
+        user_name = "ci.email.tests+{}@mender.io".format(str(uuid.uuid4()))
+        devid, _, auth, mender_device = self.prepare_env(
+            monitor_commercial_setup_no_client, user_name
+        )
+        device_static_group = "localGroup0"
+        inventory = Inventory(auth)
+        inventory.put_device_in_group(devid, device_static_group)
+
+        logger.info(
+            "test_monitorclient_alert_email_with_group: email alert on systemd service not running scenario."
+        )
+        prepare_service_monitoring(mender_device, service_name)
+        time.sleep(2 * wait_for_alert_interval_s)
+
+        mender_device.run("systemctl stop %s" % service_name)
+        logger.info(
+            "Stopped %s, sleeping %ds." % (service_name, wait_for_alert_interval_s)
+        )
+        time.sleep(2 * wait_for_alert_interval_s)
+
+        alerts, alert_count = self.get_alerts_and_alert_count_for_device(
+            inventory, devid
+        )
+        assert (True, 1) == (alerts, alert_count)
+
+        mail, messages = get_and_parse_email_n(
+            monitor_commercial_setup_no_client, user_name, 1
+        )
+        assert len(messages) > 0
+        assert_valid_alert(
+            messages[0],
+            user_name,
+            "CRITICAL: Monitor Alert for Service "
+            + service_name
+            + " not running on "
+            + devid
+            + " in group: "
+            + device_static_group,
+        )
+        assert "${workflow.input." not in mail
+        logger.info(
+            "test_monitorclient_alert_email_with_group: got CRITICAL alert email."
+        )
+
+        mender_device.run("systemctl start %s" % service_name)
+        logger.info(
+            "Started %s, sleeping %ds" % (service_name, wait_for_alert_interval_s)
+        )
+        time.sleep(2 * wait_for_alert_interval_s)
+
+        alerts, alert_count = self.get_alerts_and_alert_count_for_device(
+            inventory, devid
+        )
+        assert (False, 0) == (alerts, alert_count)
+
+        mail, messages = get_and_parse_email_n(
+            monitor_commercial_setup_no_client, user_name, 2
+        )
+        messages_count = len(messages)
+        assert messages_count >= 2
+        assert_valid_alert(
+            messages[1],
+            user_name,
+            "OK: Monitor Alert for Service "
+            + service_name
+            + " not running on "
+            + devid
+            + " in group: "
+            + device_static_group,
+        )
+        assert "${workflow.input" not in mail
+        logger.info("test_monitorclient_alert_email_with_group: got OK alert email.")
 
     def test_monitorclient_flapping(self, monitor_commercial_setup_no_client):
         """Tests the monitor client flapping support"""
@@ -825,8 +941,13 @@ class TestMonitorClientEnterprise:
 
         # if running on Kubernetes, therefore using a real mailbox, we need to explicitly
         # sort the emails by subject to avoid wrong-order issues because of delivery time
+        # with QA-510, we bring the sorting of emails according to an alert time as noted
+        # on a device. the staging could use the same, leaving it as is, since the staging
+        # tests need some attention in other places.
         if isK8S():
             messages.sort(key=lambda x: x["Subject"])
+        else:
+            messages.sort(key=lambda x: x["Date"])
 
         assert_valid_alert(
             messages[0],
@@ -1034,8 +1155,13 @@ class TestMonitorClientEnterprise:
 
         # if running on Kubernetes, therefore using a real mailbox, we need to explicitly
         # sort the emails by subject to avoid wrong-order issues because of delivery time
+        # with QA-510, we bring the sorting of emails according to an alert time as noted
+        # on a device. the staging could use the same, leaving it as is, since the staging
+        # tests need some attention in other places.
         if isK8S():
             messages.sort(key=lambda x: x["Subject"])
+        else:
+            messages.sort(key=lambda x: x["Date"])
 
         i = 0
         for service_name in ["crond", "mender-connect"]:
@@ -1609,8 +1735,13 @@ class TestMonitorClientEnterprise:
 
         # if running on Kubernetes, therefore using a real mailbox, we need to explicitly
         # sort the emails by subject to avoid wrong-order issues because of delivery time
+        # with QA-510, we bring the sorting of emails according to an alert time as noted
+        # on a device. the staging could use the same, leaving it as is, since the staging
+        # tests need some attention in other places.
         if isK8S():
             messages.sort(key=lambda x: x["Subject"])
+        else:
+            messages.sort(key=lambda x: x["Date"])
 
         assert "${workflow.input" not in mail
         assert_valid_alert(
@@ -1636,3 +1767,139 @@ class TestMonitorClientEnterprise:
         logger.info(
             "test_monitorclient_alert_store_discard_http_400: got OK alert email."
         )
+
+    def mock_docker_events(self, mender_device):
+        docker_events_exec = """
+#!/bin/bash
+
+while [ ! -f /tmp/docker_restart ]; do
+ sleep 1;
+done
+
+cat <<EOF
+2022-04-21T11:00:54.473698242+01:00 container kill 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (image=alpine, name=mycontainer, signal=15)
+2022-04-21T11:01:04.608227731+01:00 container kill 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (image=alpine, name=mycontainer, signal=9)
+2022-04-21T11:01:04.808707990+01:00 container die 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (exitCode=137, image=alpine, name=mycontainer)
+2022-04-21T11:01:05.276636214+01:00 network disconnect a8a7c0f83bc81948886602fb3752fa5e63cc80c5997e696384ecefad8540cf32 (container=91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f, name=bridge, type=bridge)
+2022-04-21T11:01:05.370419301+01:00 container stop 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (image=alpine, name=mycontainer)
+2022-04-21T11:01:05.643509121+01:00 network connect a8a7c0f83bc81948886602fb3752fa5e63cc80c5997e696384ecefad8540cf32 (container=91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f, name=bridge, type=bridge)
+2022-04-21T11:01:06.701635304+01:00 container start 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (image=alpine, name=mycontainer)
+2022-04-21T11:01:06.701815043+01:00 container restart 91ee1d4888921c267bcaab048bd964778333d9d09db399a47d1ca9784441b69f (image=alpine, name=mycontainer)
+EOF
+while :; do
+ sleep 2;
+ [ ! -f /tmp/docker_restart ] && break;
+done;
+while [ ! -f /tmp/docker_restart ]; do
+ sleep 1;
+done
+        """
+        tmpdir = tempfile.mkdtemp()
+        try:
+            mender_device.run("mkdir -p /tmp/bin || true")
+            docker_exec_file = os.path.join(tmpdir, "docker")
+            with open(docker_exec_file, "w") as fd:
+                fd.write(docker_events_exec)
+            mender_device.put(
+                os.path.basename(docker_exec_file),
+                local_path=os.path.dirname(docker_exec_file),
+                remote_path="/bin",
+            )
+            # lets assume we are not running tests in the rofs
+            mender_device.run("chmod 755 /bin/docker")
+        finally:
+            shutil.rmtree(tmpdir)
+
+    @pytest.fixture(scope="function")
+    def setup_dockerevents(
+        self, monitor_commercial_setup_no_client, action, container_name
+    ):
+        user_name = "ci.email.tests+{}@mender.io".format(str(uuid.uuid4()))
+        devid, _, auth, mender_device = self.prepare_env(
+            monitor_commercial_setup_no_client, user_name
+        )
+        inventory = Inventory(auth)
+
+        logger.info(
+            "test_monitorclient_dockerevents: email alert on container %s restart scenario."
+            % container_name
+        )
+        self.mock_docker_events(mender_device)
+        prepare_dockerevents_monitoring(
+            mender_device,
+            container_name,
+            str(alert_expiration_time_seconds),
+            action=action,
+        )
+        # restart below is required as dockerevents is built upon log subsystem in the streaming from command mode
+        mender_device.run("systemctl restart mender-monitor")
+        time.sleep(2 * wait_for_alert_interval_s)
+        return user_name, devid, mender_device, inventory
+
+    @pytest.mark.parametrize("container_name", ["mycontainer"])
+    @pytest.mark.parametrize("action", ["restart"])
+    def test_monitorclient_dockerevents(
+        self,
+        monitor_commercial_setup_no_client,
+        setup_dockerevents,
+        action,
+        container_name,
+    ):
+        """Tests the monitor client docker events subsystem"""
+        user_name, devid, mender_device, inventory = setup_dockerevents
+        mender_device.run("touch /tmp/docker_restart")
+        logger.info(
+            "restarted %s, sleeping %ds." % (container_name, wait_for_alert_interval_s)
+        )
+        time.sleep(2 * wait_for_alert_interval_s)
+
+        alerts, alert_count = self.get_alerts_and_alert_count_for_device(
+            inventory, devid
+        )
+        assert (True, 1) == (alerts, alert_count)
+
+        mail, messages = get_and_parse_email_n(
+            monitor_commercial_setup_no_client, user_name, 1
+        )
+        assert len(messages) > 0
+        assert_valid_alert(
+            messages[0],
+            user_name,
+            "CRITICAL: Monitor Alert for Docker container "
+            + container_name
+            + " "
+            + action
+            + " on "
+            + devid,
+        )
+        assert "${workflow.input." not in mail
+        logger.info("test_monitorclient_dockerevents: got CRITICAL alert email.")
+
+        mender_device.run("rm -f /tmp/docker_restart")
+        logger.info(
+            "test_monitorclient_dockerevents: emulated restarts finished. waiting for OK."
+        )
+        time.sleep(alert_expiration_time_seconds)
+
+        alerts, alert_count = self.get_alerts_and_alert_count_for_device(
+            inventory, devid
+        )
+        assert (False, 0) == (alerts, alert_count)
+
+        mail, messages = get_and_parse_email_n(
+            monitor_commercial_setup_no_client, user_name, 1
+        )
+        messages_count = len(messages)
+        assert messages_count > 0
+        assert_valid_alert(
+            messages[1],
+            user_name,
+            "OK: Monitor Alert for Docker container "
+            + container_name
+            + " "
+            + action
+            + " on "
+            + devid,
+        )
+        assert "${workflow.input" not in mail
+        logger.info("test_monitorclient_dockerevents: got OK alert email.")

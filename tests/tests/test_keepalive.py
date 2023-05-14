@@ -1,4 +1,4 @@
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -87,6 +87,17 @@ def clean_config(mender_device):
     mender_device.run("systemctl restart mender-client || true")
 
 
+def get_opened_tcp_connections(mender_device):
+    output = mender_device.run(
+        "for pid in `pidof mender`;"
+        + "do cat /proc/$pid/net/tcp;"
+        + "done"
+        + "| grep -E '[^:]+: [^ ]+ [^ ]+:01BB'"
+        + "| wc -l"
+    )
+    return int(output)
+
+
 # TestMenderClientKeepAlive
 # purpose: test the keep alive connections, the complete disable (no connections kept)
 #          and the idle timeout (close connections after given time elapses)
@@ -126,13 +137,20 @@ class TestMenderClientKeepAlive:
 
     def test_keepalive_idle_connections(self, monitor_commercial_setup_no_client):
         """Tests the closing of persistent connections on timeout"""
+
         user_name = "ci.email.tests+{}@mender.io".format(str(uuid.uuid4()))
         mender_device = self.prepare_env(monitor_commercial_setup_no_client, user_name)
-
         idle_connections_timeout_seconds = 15
         disable_keep_alive = False
-        output = mender_device.run("netstat -4np | grep -F /mender | wc -l")
-        assert int(output) > 0
+
+        # Make sure the device opens a connection
+        mender_device.run(
+            """dbus-send --print-reply --system \\
+              --dest=io.mender.AuthenticationManager \\
+              /io/mender/AuthenticationManager \\
+              io.mender.Authentication1.FetchJwtToken"""
+        )
+        assert get_opened_tcp_connections(mender_device) > 0
 
         configure_connectivity(
             mender_device,
@@ -141,32 +159,48 @@ class TestMenderClientKeepAlive:
             inventory_poll=3600,
             update_poll=3600,
         )
-        time.sleep(1)
-        output = mender_device.run("netstat -4np | grep -F /mender | wc -l")
-        assert int(output) == 1
+        mender_device.run(
+            """dbus-send --print-reply --system \\
+              --dest=io.mender.AuthenticationManager \\
+              /io/mender/AuthenticationManager \\
+              io.mender.Authentication1.FetchJwtToken"""
+        )
+        assert get_opened_tcp_connections(mender_device) > 0
 
         logger.info(
             "test_keepalive_idle_connections: waiting for IdleConnTimeoutSeconds to elapse"
         )
         time.sleep(1.5 * idle_connections_timeout_seconds)
-        output = mender_device.run("netstat -4np | grep -F /mender | wc -l")
-        clean_config(mender_device)
-        assert int(output) == 0
+        assert get_opened_tcp_connections(mender_device) == 0
         logger.info("test_keepalive_idle_connections: ok, no connections to backend")
+
+        clean_config(mender_device)
 
     def test_keepalive_disable(self, monitor_commercial_setup_no_client):
         """Tests the closing of persistent connections on timeout"""
+
         user_name = "ci.email.tests+{}@mender.io".format(str(uuid.uuid4()))
         mender_device = self.prepare_env(monitor_commercial_setup_no_client, user_name)
-
         disable_keep_alive = True
-        output = mender_device.run("netstat -4np | grep -F /mender | wc -l")
-        assert int(output) > 0
 
-        configure_connectivity(mender_device, disable_keep_alive=disable_keep_alive)
+        # Make sure the device opens a connection
+        mender_device.run(
+            """dbus-send --print-reply --system \\
+              --dest=io.mender.AuthenticationManager \\
+              /io/mender/AuthenticationManager \\
+              io.mender.Authentication1.FetchJwtToken"""
+        )
+        assert get_opened_tcp_connections(mender_device) > 0
+
+        configure_connectivity(
+            mender_device,
+            disable_keep_alive=disable_keep_alive,
+            inventory_poll=3600,
+            update_poll=3600,
+        )
         logger.info("test_keepalive_disable: waiting for client to restart")
-        time.sleep(1)
-        output = mender_device.run("netstat -4np | grep -F /mender | wc -l")
-        clean_config(mender_device)
-        assert int(output) == 0
+        time.sleep(15)
+        assert get_opened_tcp_connections(mender_device) == 0
         logger.info("test_keepalive_disable: ok, no connections to backend")
+
+        clean_config(mender_device)

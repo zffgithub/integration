@@ -1,4 +1,4 @@
-version: '2.1'
+version: '2.3'
 services:
 
     mender-iot-manager:
@@ -61,7 +61,8 @@ services:
             STORAGE_BACKEND_CERT: /etc/ssl/certs/docker.mender.io.crt
             DEPLOYMENTS_AWS_AUTH_KEY: minio
             DEPLOYMENTS_AWS_AUTH_SECRET: minio123
-            DEPLOYMENTS_AWS_URI: https://s3.docker.mender.io
+            DEPLOYMENTS_AWS_URI: http://minio:9000
+            DEPLOYMENTS_AWS_EXTERNAL_URI: https://s3.docker.mender.io
         depends_on:
             - mender-mongo
 
@@ -73,6 +74,12 @@ services:
         environment:
             MINIO_ACCESS_KEY: minio
             MINIO_SECRET_KEY: minio123
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 1s
+            timeout: 5s
+            retries: 10
+            start_period: 5s
         # use rate limiting, for more options see: https://docs.traefik.io/v2.2/middlewares/ratelimit/
         # labels:
         #     - traefik.http.middlewares.demo-ratelimit.ratelimit.average=30
@@ -87,7 +94,7 @@ services:
         command: server --automigrate
 
     mender-workflows-worker:
-        command: worker --automigrate --excluded-workflows generate_artifact
+        command: worker --automigrate --excluded-workflows generate_artifact,generate_delta_artifact
 
     mender-create-artifact-worker:
         command: --automigrate

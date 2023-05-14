@@ -4,56 +4,56 @@ _Released 09.28.2021_
 
 ### Statistics
 
-A total of 14721 lines added, 5955 removed (delta 8766)
+A total of 10247 lines added, 5174 removed (delta 5073)
 
 | Developers with the most changesets | |
 |---|---|
-| Manuel Zedel | 124 (40.1%) |
-| Fabio Tranchitella | 60 (19.4%) |
-| Lluis Campos | 44 (14.2%) |
-| Alf-Rune Siqveland | 24 (7.8%) |
-| Peter Grzybowski | 17 (5.5%) |
-| Alex Miliukov | 11 (3.6%) |
-| Kristian Amlie | 10 (3.2%) |
-| Ole Petter Orhagen | 9 (2.9%) |
-| Krzysztof Jaskiewicz | 5 (1.6%) |
-| Marcin Chalczynski | 3 (1.0%) |
+| Manuel Zedel | 123 (63.1%) |
+| Fabio Tranchitella | 40 (20.5%) |
+| Alf-Rune Siqveland | 9 (4.6%) |
+| Lluis Campos | 8 (4.1%) |
+| Alex Miliukov | 6 (3.1%) |
+| Krzysztof Jaskiewicz | 3 (1.5%) |
+| Marcin Chalczynski | 2 (1.0%) |
+| Prashanth Joseph Babu | 1 (0.5%) |
+| Kristian Amlie | 1 (0.5%) |
+| Michael Clelland | 1 (0.5%) |
 
 | Developers with the most changed lines | |
 |---|---|
-| Manuel Zedel | 5133 (31.9%) |
-| Fabio Tranchitella | 2749 (17.1%) |
-| Alf-Rune Siqveland | 2280 (14.2%) |
-| Peter Grzybowski | 1424 (8.9%) |
-| Alex Miliukov | 1383 (8.6%) |
-| Ole Petter Orhagen | 1365 (8.5%) |
-| Krzysztof Jaskiewicz | 822 (5.1%) |
-| Lluis Campos | 729 (4.5%) |
-| Kristian Amlie | 109 (0.7%) |
-| Marcin Chalczynski | 68 (0.4%) |
+| Manuel Zedel | 5132 (45.2%) |
+| Fabio Tranchitella | 2224 (19.6%) |
+| Alf-Rune Siqveland | 1592 (14.0%) |
+| Alex Miliukov | 1333 (11.7%) |
+| Krzysztof Jaskiewicz | 721 (6.3%) |
+| Lluis Campos | 253 (2.2%) |
+| Marcin Chalczynski | 61 (0.5%) |
+| Michael Clelland | 25 (0.2%) |
+| Peter Grzybowski | 12 (0.1%) |
+| Prashanth Joseph Babu | 2 (0.0%) |
 
 | Developers with the most lines removed | |
 |---|---|
-| Lluis Campos | 133 (2.2%) |
-| Marcin Chalczynski | 6 (0.1%) |
+| Lluis Campos | 72 (1.4%) |
+| Marcin Chalczynski | 13 (0.3%) |
 
 | Top changeset contributors by employer | |
 |---|---|
-| Northern.tech | 300 (97.1%) |
-| RnDity | 8 (2.6%) |
-| prashanthjbabu@gmail.com | 1 (0.3%) |
+| Northern.tech | 189 (96.9%) |
+| RnDity | 5 (2.6%) |
+| prashanthjbabu@gmail.com | 1 (0.5%) |
 
 | Top lines changed by employer | |
 |---|---|
-| Northern.tech | 15197 (94.5%) |
-| RnDity | 890 (5.5%) |
+| Northern.tech | 10572 (93.1%) |
+| RnDity | 782 (6.9%) |
 | prashanthjbabu@gmail.com | 2 (0.0%) |
 
-| Employers with the most hackers (total 12) | |
+| Employers with the most hackers (total 11) | |
 |---|---|
-| Northern.tech | 9 (75.0%) |
-| RnDity | 2 (16.7%) |
-| prashanthjbabu@gmail.com | 1 (8.3%) |
+| Northern.tech | 8 (72.7%) |
+| RnDity | 2 (18.2%) |
+| prashanthjbabu@gmail.com | 1 (9.1%) |
 
 ### Changelogs
 
@@ -63,11 +63,14 @@ New changes in deployments since 3.0.0:
 
 * datastore_mongo: fix nil pointer dereference
 * remove the CORS middleware, rely on the API gateway instead
-  ([MEN-4921](https://tracker.mender.io/browse/MEN-4921))
+  ([MEN-4921](https://northerntech.atlassian.net/browse/MEN-4921))
 * move the /deployments/devices/{id} end-point to internal
-  ([MEN-4525](https://tracker.mender.io/browse/MEN-4525))
+  ([MEN-4525](https://northerntech.atlassian.net/browse/MEN-4525))
 * Listing devices in deployment sorts by statuses
-  ([MEN-4847](https://tracker.mender.io/browse/MEN-4847))
+  ([MEN-4847](https://northerntech.atlassian.net/browse/MEN-4847))
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps alpine from 3.13.5 to 3.14.0.
 
@@ -154,11 +157,14 @@ New changes in deployments since 3.0.0:
 New changes in deviceauth since 3.0.0:
 
 * add support for fallback RSA private key
-  ([MEN-3152](https://tracker.mender.io/browse/MEN-3152))
+  ([MEN-3152](https://northerntech.atlassian.net/browse/MEN-3152))
 * remove the CORS middleware, rely on the API gateway instead
-  ([MEN-4921](https://tracker.mender.io/browse/MEN-4921))
+  ([MEN-4921](https://northerntech.atlassian.net/browse/MEN-4921))
 * Restrict access to monitor APIs to devices with monitor add-on
-  ([MEN-5077](https://tracker.mender.io/browse/MEN-5077))
+  ([MEN-5077](https://northerntech.atlassian.net/browse/MEN-5077))
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps [go.mongodb.org/mongo-driver](https://github.com/mongodb/mongo-go-driver) from 1.5.3 to 1.5.4.
       - [Release notes](https://github.com/mongodb/mongo-go-driver/releases)
@@ -187,42 +193,45 @@ New changes in deviceauth since 3.0.0:
 New changes in deviceconnect since 1.2.0:
 
 * store the correct offset in the recordings control messages
-  ([MEN-4770](https://tracker.mender.io/browse/MEN-4770))
+  ([MEN-4770](https://northerntech.atlassian.net/browse/MEN-4770))
 
 #### gui (3.1.0)
 
 New changes in gui since 3.0.0:
 
 * added copy capabilities & sha checksum to device authset information
-  ([MEN-4791](https://tracker.mender.io/browse/MEN-4791))
+  ([MEN-4791](https://northerntech.atlassian.net/browse/MEN-4791))
 * fixed an issue that caused the deployment report to crash due to missing update control information
 * added role dependent (admin only) notification muting to global settings
-  ([MEN-4757](https://tracker.mender.io/browse/MEN-4757))
+  ([MEN-4757](https://northerntech.atlassian.net/browse/MEN-4757))
 * device details now show monitoring information if monitor add-on is enabled
-  ([MEN-4787](https://tracker.mender.io/browse/MEN-4787))
+  ([MEN-4787](https://northerntech.atlassian.net/browse/MEN-4787))
 * added monitor to addon selection
-  ([MEN-4836](https://tracker.mender.io/browse/MEN-4836))
+  ([MEN-4836](https://northerntech.atlassian.net/browse/MEN-4836))
 * fixed an issue that caused the page selection in the device list to change unintended
 * fixed an issue that caused release tab to crash when release generation takes longer than releases retrieval
 * added device list tag display & editing capabilties to device details
-  ([MEN-4755](https://tracker.mender.io/browse/MEN-4755))
+  ([MEN-4755](https://northerntech.atlassian.net/browse/MEN-4755))
 * made artifact creation more restrictive to not allow creation without device types or invalid paths
-  ([MEN-4933](https://tracker.mender.io/browse/MEN-4933))
+  ([MEN-4933](https://northerntech.atlassian.net/browse/MEN-4933))
 * fixed an issue that caused the device list to misbehave when quickly changing pages
-  ([MEN-4932](https://tracker.mender.io/browse/MEN-4932))
+  ([MEN-4932](https://northerntech.atlassian.net/browse/MEN-4932))
 * Adjust help text to say that RPi image is merely Mender ready.
 * require the current one when updating the user's password
-  ([MEN-4922](https://tracker.mender.io/browse/MEN-4922))
+  ([MEN-4922](https://northerntech.atlassian.net/browse/MEN-4922))
 * Install Mender commercial add-ons (namely: mender-monitor)
   during user on-boarding.
-  ([MEN-4759](https://tracker.mender.io/browse/MEN-4759))
+  ([MEN-4759](https://northerntech.atlassian.net/browse/MEN-4759))
 * switched device deployment progress to no longer show assumed progress
-  ([MEN-5025](https://tracker.mender.io/browse/MEN-5025))
+  ([MEN-5025](https://northerntech.atlassian.net/browse/MEN-5025))
 * ensure copied authset pubkey contains empty newline if it exists already
 * fixed an issue that prevented getting to devices based on their software in the overall device distribution
 * fixed an issue that prevented filter selections from being persisted
 * fixed an issue that prevented changes in monitoring issues from being reflected in the devicelist
-  ([MEN-5113](https://tracker.mender.io/browse/MEN-5113))
+  ([MEN-5113](https://northerntech.atlassian.net/browse/MEN-5113))
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps nginx from 1.21.0-alpine to 1.21.1-alpine.
 
@@ -1450,14 +1459,17 @@ New changes in gui since 3.0.0:
 New changes in inventory since 3.0.0:
 
 * PUT and PATCH device tags management endpoints
-  ([MEN-2342](https://tracker.mender.io/browse/MEN-2342))
+  ([MEN-2342](https://northerntech.atlassian.net/browse/MEN-2342))
 * apply configurable limits to tags (20) and inventory (100)
-  ([MEN-4781](https://tracker.mender.io/browse/MEN-4781))
+  ([MEN-4781](https://northerntech.atlassian.net/browse/MEN-4781))
 * remove the CORS middleware, rely on the API gateway instead
-  ([MEN-4921](https://tracker.mender.io/browse/MEN-4921))
+  ([MEN-4921](https://northerntech.atlassian.net/browse/MEN-4921))
 * improve device decommissioning and inventory data reset
-  ([MEN-4525](https://tracker.mender.io/browse/MEN-4525))
+  ([MEN-4525](https://northerntech.atlassian.net/browse/MEN-4525))
 * internal endpoint for reindexing monitor data
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps [go.mongodb.org/mongo-driver](https://github.com/mongodb/mongo-go-driver) from 1.5.3 to 1.5.4.
       - [Release notes](https://github.com/mongodb/mongo-go-driver/releases)
@@ -1513,11 +1525,14 @@ New changes in inventory since 3.0.0:
 New changes in useradm since 1.15.0:
 
 * add support for fallback RSA private key
-  ([MEN-3153](https://tracker.mender.io/browse/MEN-3153))
+  ([MEN-3153](https://northerntech.atlassian.net/browse/MEN-3153))
 * remove the CORS middleware, rely on the API gateway instead
-  ([MEN-4921](https://tracker.mender.io/browse/MEN-4921))
+  ([MEN-4921](https://northerntech.atlassian.net/browse/MEN-4921))
 * require the current one when updating the user's password
-  ([MEN-4922](https://tracker.mender.io/browse/MEN-4922))
+  ([MEN-4922](https://northerntech.atlassian.net/browse/MEN-4922))
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps [go.mongodb.org/mongo-driver](https://github.com/mongodb/mongo-go-driver) from 1.5.3 to 1.5.4.
       - [Release notes](https://github.com/mongodb/mongo-go-driver/releases)
@@ -1535,11 +1550,14 @@ New changes in useradm since 1.15.0:
 New changes in workflows since 2.0.0:
 
 * do not use upsert when acquiring jobs
-  ([MEN-4923](https://tracker.mender.io/browse/MEN-4923))
+  ([MEN-4923](https://northerntech.atlassian.net/browse/MEN-4923))
 * BCC support and CC fixes
-  ([MEN-4998](https://tracker.mender.io/browse/MEN-4998))
+  ([MEN-4998](https://northerntech.atlassian.net/browse/MEN-4998))
 * use internal end-points to provision and decommission devices
-  ([MEN-4525](https://tracker.mender.io/browse/MEN-4525))
+  ([MEN-4525](https://northerntech.atlassian.net/browse/MEN-4525))
+
+##### Dependabot bumps
+
 * Aggregated Dependabot Changelogs:
   * Bumps [go.mongodb.org/mongo-driver](https://github.com/mongodb/mongo-go-driver) from 1.5.3 to 1.5.4.
       - [Release notes](https://github.com/mongodb/mongo-go-driver/releases)
@@ -1548,348 +1566,6 @@ New changes in workflows since 2.0.0:
       ```
       updated-dependencies:
       - dependency-name: go.mongodb.org/mongo-driver
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-
-#### integration (3.1.0)
-
-New changes in integration since 3.0.0:
-
-* update RBAC tests for configuration deployments
-
-  With new, simplified RBAC we do not support any other actions than
-  VIEW_DEVICE when it comes to group permissions.
-  If user can view the device then user is allowed to deploy to the
-  device too.
-* [ENT] Enable Redis for JWT and tenant settings cache by default
-* Fix: Traefik is proxying minio requests on (80,443) ports, not on 9000
-* Bumped Traefik from 2.4 to 2.5
-* New demo certificate with Subject Alternative Names field
-* Updated keygen script, replaced env parameters
-  CERT_(API|STORAGE)_CN with CERT_CN and CERT_SAN for setting certificate
-  Common Name and Subject Alternative Name.
-* API gateway requires TLS 1.2 or later
-* Upgrade auditlogs to 2.0.0.
-* Upgrade deployments-enterprise to 4.0.0.
-* Upgrade deployments to 4.0.0.
-* Upgrade deviceauth to 3.1.0.
-* Upgrade deviceconnect to 1.2.1.
-* Upgrade devicemonitor to 1.0.0.
-* Upgrade gui to 3.1.0.
-* Upgrade integration to 3.1.0.
-* Upgrade inventory-enterprise to 4.0.0.
-* Upgrade inventory to 4.0.0.
-* Upgrade mender-artifact to 3.6.1.
-* Upgrade mender to 3.1.0.
-* Add monitor-client 1.0.0.
-* Upgrade tenantadm to 3.3.0.
-* Upgrade useradm-enterprise to 1.16.0.
-* Upgrade useradm to 1.16.0.
-* Upgrade workflows-enterprise to 2.1.0.
-* Upgrade workflows to 2.1.0.
-* Aggregated Dependabot Changelogs:
-  * Bumps python from 3.9.5 to 3.9.6.
-
-      ```
-      updated-dependencies:
-      - dependency-name: python
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [packaging](https://github.com/pypa/packaging) from 20.9 to 21.0.
-      - [Release notes](https://github.com/pypa/packaging/releases)
-      - [Changelog](https://github.com/pypa/packaging/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pypa/packaging/compare/20.9...21.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: packaging
-        dependency-type: direct:production
-        update-type: version-update:semver-major
-      ```
-  * Bumps [pillow](https://github.com/python-pillow/Pillow) from 8.2.0 to 8.3.0.
-      - [Release notes](https://github.com/python-pillow/Pillow/releases)
-      - [Changelog](https://github.com/python-pillow/Pillow/blob/master/CHANGES.rst)
-      - [Commits](https://github.com/python-pillow/Pillow/compare/8.2.0...8.3.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pillow
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [pyrsistent](https://github.com/tobgu/pyrsistent) from 0.17.3 to 0.18.0.
-      - [Release notes](https://github.com/tobgu/pyrsistent/releases)
-      - [Changelog](https://github.com/tobgu/pyrsistent/blob/master/CHANGES.txt)
-      - [Commits](https://github.com/tobgu/pyrsistent/compare/v0.17.3...v0.18.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pyrsistent
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [pathlib2](https://github.com/mcmtroffaes/pathlib2) from 2.3.5 to 2.3.6.
-      - [Release notes](https://github.com/mcmtroffaes/pathlib2/releases)
-      - [Changelog](https://github.com/mcmtroffaes/pathlib2/blob/develop/CHANGELOG.rst)
-      - [Commits](https://github.com/mcmtroffaes/pathlib2/compare/2.3.5...2.3.6)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pathlib2
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [cffi](http://cffi.readthedocs.org) from 1.14.5 to 1.14.6.
-
-      ```
-      updated-dependencies:
-      - dependency-name: cffi
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [invoke](https://github.com/bitprophet/alabaster) from 1.5.0 to 1.6.0.
-      - [Release notes](https://github.com/bitprophet/alabaster/releases)
-      - [Changelog](https://github.com/bitprophet/alabaster/blob/master/docs/changelog.rst)
-      - [Commits](https://github.com/bitprophet/alabaster/commits)
-
-      ```
-      updated-dependencies:
-      - dependency-name: invoke
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [cffi](http://cffi.readthedocs.org) from 1.14.5 to 1.14.6.
-
-      ```
-      updated-dependencies:
-      - dependency-name: cffi
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [pillow](https://github.com/python-pillow/Pillow) from 8.3.0 to 8.3.1.
-      - [Release notes](https://github.com/python-pillow/Pillow/releases)
-      - [Changelog](https://github.com/python-pillow/Pillow/blob/master/CHANGES.rst)
-      - [Commits](https://github.com/python-pillow/Pillow/compare/8.3.0...8.3.1)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pillow
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [requests](https://github.com/psf/requests) from 2.25.1 to 2.26.0.
-      - [Release notes](https://github.com/psf/requests/releases)
-      - [Changelog](https://github.com/psf/requests/blob/master/HISTORY.md)
-      - [Commits](https://github.com/psf/requests/compare/v2.25.1...v2.26.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: requests
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [texttable](https://github.com/foutaise/texttable) from 1.6.3 to 1.6.4.
-      - [Release notes](https://github.com/foutaise/texttable/releases)
-      - [Changelog](https://github.com/foutaise/texttable/blob/master/CHANGELOG.md)
-      - [Commits](https://github.com/foutaise/texttable/compare/v1.6.3...v1.6.4)
-
-      ```
-      updated-dependencies:
-      - dependency-name: texttable
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [stripe](https://github.com/stripe/stripe-python) from 2.58.0 to 2.60.0.
-      - [Release notes](https://github.com/stripe/stripe-python/releases)
-      - [Changelog](https://github.com/stripe/stripe-python/blob/master/CHANGELOG.md)
-      - [Commits](https://github.com/stripe/stripe-python/compare/v2.58.0...v2.60.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: stripe
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [stripe](https://github.com/stripe/stripe-python) from 2.58.0 to 2.60.0.
-      - [Release notes](https://github.com/stripe/stripe-python/releases)
-      - [Changelog](https://github.com/stripe/stripe-python/blob/master/CHANGELOG.md)
-      - [Commits](https://github.com/stripe/stripe-python/compare/v2.58.0...v2.60.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: stripe
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [pymongo](https://github.com/mongodb/mongo-python-driver) from 3.11.4 to 3.12.0.
-      - [Release notes](https://github.com/mongodb/mongo-python-driver/releases)
-      - [Changelog](https://github.com/mongodb/mongo-python-driver/blob/3.12.0/doc/changelog.rst)
-      - [Commits](https://github.com/mongodb/mongo-python-driver/compare/3.11.4...3.12.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pymongo
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [requests](https://github.com/psf/requests) from 2.25.1 to 2.26.0.
-      - [Release notes](https://github.com/psf/requests/releases)
-      - [Changelog](https://github.com/psf/requests/blob/master/HISTORY.md)
-      - [Commits](https://github.com/psf/requests/compare/v2.25.1...v2.26.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: requests
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [pymongo](https://github.com/mongodb/mongo-python-driver) from 3.11.4 to 3.12.0.
-      - [Release notes](https://github.com/mongodb/mongo-python-driver/releases)
-      - [Changelog](https://github.com/mongodb/mongo-python-driver/blob/3.12.0/doc/changelog.rst)
-      - [Commits](https://github.com/mongodb/mongo-python-driver/compare/3.11.4...3.12.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pymongo
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [python-dotenv](https://github.com/theskumar/python-dotenv) from 0.18.0 to 0.19.0.
-      - [Release notes](https://github.com/theskumar/python-dotenv/releases)
-      - [Changelog](https://github.com/theskumar/python-dotenv/blob/master/CHANGELOG.md)
-      - [Commits](https://github.com/theskumar/python-dotenv/compare/v0.18.0...v0.19.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: python-dotenv
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [distro](https://github.com/python-distro/distro) from 1.5.0 to 1.6.0.
-      - [Release notes](https://github.com/python-distro/distro/releases)
-      - [Changelog](https://github.com/python-distro/distro/blob/master/CHANGELOG.md)
-      - [Commits](https://github.com/python-distro/distro/compare/v1.5.0...v1.6.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: distro
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [progress](https://github.com/verigak/progress) from 1.5 to 1.6.
-      - [Release notes](https://github.com/verigak/progress/releases)
-      - [Commits](https://github.com/verigak/progress/compare/1.5...1.6)
-
-      ```
-      updated-dependencies:
-      - dependency-name: progress
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ```
-  * Bumps [cryptography](https://github.com/pyca/cryptography) from 3.4.7 to 3.4.8.
-      - [Release notes](https://github.com/pyca/cryptography/releases)
-      - [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pyca/cryptography/compare/3.4.7...3.4.8)
-
-      ```
-      updated-dependencies:
-      - dependency-name: cryptography
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [cryptography](https://github.com/pyca/cryptography) from 3.4.7 to 3.4.8.
-      - [Release notes](https://github.com/pyca/cryptography/releases)
-      - [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pyca/cryptography/compare/3.4.7...3.4.8)
-
-      ```
-      updated-dependencies:
-      - dependency-name: cryptography
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [pytest](https://github.com/pytest-dev/pytest) from 6.2.4 to 6.2.5.
-      - [Release notes](https://github.com/pytest-dev/pytest/releases)
-      - [Changelog](https://github.com/pytest-dev/pytest/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pytest-dev/pytest/compare/6.2.4...6.2.5)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pytest
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [pytest](https://github.com/pytest-dev/pytest) from 6.2.4 to 6.2.5.
-      - [Release notes](https://github.com/pytest-dev/pytest/releases)
-      - [Changelog](https://github.com/pytest-dev/pytest/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pytest-dev/pytest/compare/6.2.4...6.2.5)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pytest
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [pluggy](https://github.com/pytest-dev/pluggy) from 0.13.1 to 1.0.0.
-      - [Release notes](https://github.com/pytest-dev/pluggy/releases)
-      - [Changelog](https://github.com/pytest-dev/pluggy/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pytest-dev/pluggy/compare/0.13.1...1.0.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pluggy
-        dependency-type: direct:production
-        update-type: version-update:semver-major
-      ```
-  * Bumps [pluggy](https://github.com/pytest-dev/pluggy) from 0.13.1 to 1.0.0.
-      - [Release notes](https://github.com/pytest-dev/pluggy/releases)
-      - [Changelog](https://github.com/pytest-dev/pluggy/blob/main/CHANGELOG.rst)
-      - [Commits](https://github.com/pytest-dev/pluggy/compare/0.13.1...1.0.0)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pluggy
-        dependency-type: direct:production
-        update-type: version-update:semver-major
-      ```
-  * Bumps python from 3.9.6 to 3.9.7.
-
-      ```
-      updated-dependencies:
-      - dependency-name: python
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [docker](https://github.com/docker/docker-py) from 5.0.0 to 5.0.2.
-      - [Release notes](https://github.com/docker/docker-py/releases)
-      - [Commits](https://github.com/docker/docker-py/compare/5.0.0...5.0.2)
-
-      ```
-      updated-dependencies:
-      - dependency-name: docker
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [pillow](https://github.com/python-pillow/Pillow) from 8.3.1 to 8.3.2.
-      - [Release notes](https://github.com/python-pillow/Pillow/releases)
-      - [Changelog](https://github.com/python-pillow/Pillow/blob/master/CHANGES.rst)
-      - [Commits](https://github.com/python-pillow/Pillow/compare/8.3.1...8.3.2)
-
-      ```
-      updated-dependencies:
-      - dependency-name: pillow
-        dependency-type: direct:production
-        update-type: version-update:semver-patch
-      ```
-  * Bumps [docker](https://github.com/docker/docker-py) from 5.0.0 to 5.0.2.
-      - [Release notes](https://github.com/docker/docker-py/releases)
-      - [Commits](https://github.com/docker/docker-py/compare/5.0.0...5.0.2)
-
-      ```
-      updated-dependencies:
-      - dependency-name: docker
         dependency-type: direct:production
         update-type: version-update:semver-patch
       ```

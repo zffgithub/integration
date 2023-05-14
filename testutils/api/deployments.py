@@ -1,4 +1,4 @@
-# Copyright 2021 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 #    limitations under the License.
 
 URL_MGMT = "/api/management/v1/deployments"
+URL_INTERNAL = "/api/internal/v1/deployments"
 URL_DEVICES = "/api/devices/v1/deployments"
 
 URL_NEXT = "/device/deployments/next"
@@ -22,7 +23,10 @@ URL_DEPLOYMENTS = "/deployments"
 URL_DEPLOYMENTS_GROUP = "/deployments/group/{name}"
 URL_DEPLOYMENTS_ID = "/deployments/{id}"
 URL_DEPLOYMENTS_DEVICES = "/deployments/{id}/devices"
+URL_DEVICE_DEPLOYMENTS_ID = "/deployments/devices/{id}"
 URL_DEPLOYMENTS_STATISTICS = "/deployments/{id}/statistics"
 URL_DEPLOYMENTS_ARTIFACTS = "/artifacts"
 URL_DEPLOYMENTS_ARTIFACTS_GET = "/artifacts/{id}"
+URL_DEPLOYMENTS_ARTIFACTS_DOWNLOAD = "/artifacts/{id}/download"
 URL_DEPLOYMENTS_ARTIFACTS_GENERATE = "/artifacts/generate"
+URL_INTERNAL_CONFIG = "/tenants/{tenant_id}/config"

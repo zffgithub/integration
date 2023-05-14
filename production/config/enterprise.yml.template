@@ -5,7 +5,7 @@
 # Notes:
 # - integration/docker-compose.enterprise.yml file is assumed to be included
 
-version: '2.1'
+version: '2.3'
 services:
 
     mender-device-auth:
@@ -18,3 +18,7 @@ services:
     mender-deviceconnect:
         environment:
             DEVICECONNECT_ENABLE_AUDIT: "1"
+
+    mender-useradm:
+        volumes:
+            - ./production/keys-generated/keys/useradm/private.key:/etc/useradm-enterprise/rsa/private.pem:ro

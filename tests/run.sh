@@ -1,4 +1,18 @@
 #!/bin/bash
+# Copyright 2022 Northern.tech AS
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
 set -x -e
 
 MACHINE_NAME=qemux86-64
@@ -21,7 +35,7 @@ usage() {
     echo
     echo "Recognized Environment Variables:"
     echo
-    echo "TESTS_IN_PARALLEL                    The number of parallel jobs for pytest-xdist"
+    echo "TESTS_IN_PARALLEL_INTEGRATION        The number of parallel jobs for pytest-xdist"
     echo "SPECIFIC_INTEGRATION_TEST            The ability to pass <testname-regexp> to pytest -k"
     exit 0
 }
@@ -75,6 +89,7 @@ echo "Detected mender-cli branch: $MENDER_CLI_BRANCH"
 function modify_services_for_testing() {
     # Remove all published ports for testing
     sed -e '/9000:9000/d' -e '/8080:8080/d' -e '/443:443/d' -e '/80:80/d' -e '/ports:/d' ../docker-compose.demo.yml > ../docker-compose.testing.yml
+    sed -e '/9000:9000/d' -e '/ports:/d' ../storage-proxy/docker-compose.storage-proxy.demo.yml > ../storage-proxy/docker-compose.storage-proxy.testing.yml
     # disable download speed limits
     sed -e 's/DOWNLOAD_SPEED/#DOWNLOAD_SPEED/' -i ../docker-compose.testing.yml
     # whitelist *all* IPs/DNS names in the gateway (will be accessed via dynamically assigned IP in tests)
@@ -92,7 +107,7 @@ function get_requirements() {
     # Download what we need.
     mkdir -p downloaded-tools
 
-    curl --fail "https://d1b0l86ne08fsf.cloudfront.net/mender-artifact/${MENDER_ARTIFACT_BRANCH}/linux/mender-artifact" \
+    curl --fail "https://downloads.mender.io/mender-artifact/${MENDER_ARTIFACT_BRANCH}/linux/mender-artifact" \
          -o downloaded-tools/mender-artifact \
          -z downloaded-tools/mender-artifact
 
@@ -160,6 +175,8 @@ docker run --rm --privileged --entrypoint /extract_fs -v $PWD/output:/output \
         mendersoftware/mender-client-qemu-rofs:$(../extra/release_tool.py --version-of mender-client-qemu-rofs --version-type docker)
 docker run --rm --privileged --entrypoint /extract_fs -v $PWD/output:/output \
         registry.mender.io/mendersoftware/mender-gateway-qemu-commercial:$(../extra/release_tool.py --version-of mender-gateway --version-type docker)
+docker run --rm --privileged --entrypoint /extract_fs -v $PWD/output:/output \
+         registry.mender.io/mendersoftware/mender-qemu-rofs-commercial:$(../extra/release_tool.py --version-of mender-qemu-rofs-commercial --version-type docker)
 mv output/* .
 rmdir output
 
@@ -179,7 +196,7 @@ if ! python3 -m pip show pytest-xdist >/dev/null; then
     echo "WARNING: install pytest-xdist for running tests in parallel"
 else
     # run all tests when running in parallel
-    EXTRA_TEST_ARGS="${XDIST_ARGS:--n ${TESTS_IN_PARALLEL:-auto}}"
+    EXTRA_TEST_ARGS="${XDIST_ARGS:--n ${TESTS_IN_PARALLEL_INTEGRATION:-auto}}"
 fi
 
 if ! python3 -m pip show pytest-html >/dev/null; then
@@ -191,13 +208,9 @@ if [[ -n $SPECIFIC_INTEGRATION_TEST ]]; then
     SPECIFIC_INTEGRATION_TEST_FLAG="-k"
 fi
 
-export TENANTADM_STRIPE_API_KEY=$STRIPE_API_KEY
-
 if [ -n "$K8S" ]; then
     export KUBECONFIG="${HOME}/kubeconfig.${K8S}"
-    aws eks --region $AWS_DEFAULT_REGION update-kubeconfig --name $AWS_EKS_CLUSTER_NAME --kubeconfig ${HOME}/kubeconfig.${K8S}
-    kubectl config set-context --current --namespace=$K8S
-    kubectl get pods -o wide
+    aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $AWS_EKS_CLUSTER_NAME --kubeconfig ${HOME}/kubeconfig.${K8S}
 fi
 
 python3 -m pytest \

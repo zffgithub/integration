@@ -1,4 +1,4 @@
-# Copyright 2022 Northern.tech AS
+# Copyright 2023 Northern.tech AS
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ class BaseTestFailures(MenderTesting):
     def do_test_update_image_id_already_installed(
         self, env, valid_image_with_mender_conf,
     ):
-        """Uploading an image with an incorrect name set results in failure and rollback."""
+        """Test that an image with the same ID as the already installed image does not install anew"""
 
         mender_device = env.device
         devauth = DeviceAuthV2(env.auth)
@@ -40,7 +40,7 @@ class BaseTestFailures(MenderTesting):
             mender_conf = mender_device.run("cat /etc/mender/mender.conf")
             deployment_id, expected_image_id = common_update_procedure(
                 valid_image_with_mender_conf(mender_conf),
-                True,
+                verify_status=True,
                 devauth=devauth,
                 deploy=deploy,
             )
@@ -60,7 +60,7 @@ class BaseTestFailures(MenderTesting):
 
     @MenderTesting.fast
     def do_test_large_update_image(self, env):
-        """Installing an image larger than the passive/active parition size should result in a failure."""
+        """Installing an image larger than the passive/active partition size should result in a failure."""
 
         mender_device = env.device
         devauth = DeviceAuthV2(env.auth)

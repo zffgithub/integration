@@ -25,7 +25,6 @@ from . import artifact_lock
 
 def common_update_procedure(
     install_image=None,
-    regenerate_image_id=True,
     device_type=conftest.machine_name,
     verify_status=True,
     signed=False,
@@ -39,14 +38,12 @@ def common_update_procedure(
     version=None,
     devauth=devauth,
     deploy=deploy,
+    autogenerate_delta=False,
 ):
 
     with artifact_lock:
-        if regenerate_image_id:
-            artifact_name = "mender-%s" % str(random.randint(0, 99999999))
-            logger.debug("randomized image id: " + artifact_name)
-        else:
-            artifact_name = Helpers.yocto_id_from_ext4(install_image)
+        artifact_name = "mender-%s" % str(random.randint(0, 99999999))
+        logger.debug("randomized image id: " + artifact_name)
 
         # create artifact
         with tempfile.NamedTemporaryFile() as artifact_file:
@@ -82,6 +79,7 @@ def common_update_procedure(
                     name="New valid update",
                     artifact_name=artifact_name,
                     devices=devices,
+                    autogenerate_delta=autogenerate_delta,
                 )
             else:
                 logger.warn("failed to create artifact")
@@ -100,7 +98,6 @@ def update_image(
     host_ip,
     expected_mender_clients=1,
     install_image=None,
-    regenerate_image_id=True,
     signed=False,
     devices=None,
     scripts=[],
@@ -112,6 +109,7 @@ def update_image(
     version=None,
     devauth=devauth,
     deploy=deploy,
+    autogenerate_delta=False,
 ):
     """
         Perform a successful upgrade, and assert that deployment status/logs are correct.
@@ -125,7 +123,6 @@ def update_image(
     with device.get_reboot_detector(host_ip) as reboot:
         deployment_id, expected_image_id = common_update_procedure(
             install_image,
-            regenerate_image_id,
             signed=signed,
             devices=devices,
             scripts=scripts,
@@ -137,11 +134,15 @@ def update_image(
             version=version,
             devauth=devauth,
             deploy=deploy,
+            autogenerate_delta=autogenerate_delta,
         )
         reboot.verify_reboot_performed()
 
         try:
-            assert device.get_active_partition() == previous_inactive_part
+            # In the test_migrate_from_legacy_mender_v1_* tests, the storage
+            # device changes name from one image to the next, so only compare
+            # the index, not the device itself.
+            assert device.get_active_partition()[-1] == previous_inactive_part[-1]
         except AssertionError:
             logs = []
             for d in devauth.get_devices():
